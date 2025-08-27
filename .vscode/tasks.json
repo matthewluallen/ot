@@ -1,0 +1,11 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    { "label": "Show services status", "type": "shell", "command": "supervisorctl status", "problemMatcher": [] },
+    { "label": "Restart all services", "type": "shell", "command": "supervisorctl restart all", "problemMatcher": [] },
+    { "label": "Stop all services", "type": "shell", "command": "supervisorctl stop all", "problemMatcher": [] },
+    { "label": "OpenPLC logs", "type": "shell", "command": "tail -n 100 -f /tmp/openplc.out.log", "problemMatcher": [] },
+    { "label": "pymodbus logs", "type": "shell", "command": "tail -n 100 -f /tmp/pymodbus.out.log", "problemMatcher": [] },
+    { "label": "OT-sim logs", "type": "shell", "command": "tail -n 100 -f /tmp/otsim.out.log", "problemMatcher": [] }
+  ]
+}

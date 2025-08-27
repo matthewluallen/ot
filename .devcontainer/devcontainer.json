@@ -1,0 +1,28 @@
+{
+  "name": "OT-sim + OpenPLC + pymodbus REPL (teaching)",
+  "build": { "dockerfile": "Dockerfile" },
+  "updateContentCommand": "bash scripts/install-ot-sim.sh && bash scripts/install-openplc.sh && bash scripts/install-pymodbus-repl.sh",
+  "postStartCommand": "bash scripts/launch-procs.sh",
+  "features": {
+    "ghcr.io/devcontainers/features/git:1": {},
+    "ghcr.io/devcontainers/features/common-utils:2": {}
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "ms-vscode.cpptools"
+      ],
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "bash"
+      }
+    }
+  },
+  "forwardPorts": [8080, 5020],
+  "portsAttributes": {
+    "8080": { "label": "OpenPLC Web UI", "onAutoForward": "openBrowser" },
+    "5020": { "label": "Demo Modbus TCP Server" }
+  },
+  "remoteUser": "vscode"
+}
