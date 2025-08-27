@@ -21,10 +21,11 @@
       }
     }
   },
-  "forwardPorts": [8080, 5020],
+  "forwardPorts": [8080, 5020, 6080],
   "portsAttributes": {
     "8080": { "label": "OpenPLC Web UI", "onAutoForward": "openBrowser" },
-    "5020": { "label": "Demo Modbus TCP Server" }
+    "5020": { "label": "Demo Modbus TCP Server" },
+    "6080": { "label": "noVNC Desktop", "onAutoForward": "openBrowser" }
   },
   "remoteUser": "vscode"
 }

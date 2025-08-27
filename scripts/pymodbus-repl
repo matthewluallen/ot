@@ -1,0 +1,103 @@
+#!/workspaces/ot/.venv/bin/python
+import sys, importlib, pkgutil, argparse, asyncio
+
+def run_pkg_app():
+    """Try to locate and run the official Typer/Click app if the package provides one."""
+    try:
+        m = importlib.import_module("pymodbus_repl")
+    except Exception:
+        return False
+    # Search submodules for an attribute named 'app' (Typer/Click) or a 'main' callable
+    candidates = ["pymodbus_repl", "pymodbus_repl.cli", "pymodbus_repl.main", "pymodbus_repl.__main__"]
+    # Also walk the package to catch nested cli modules
+    try:
+        for _, name, _ in pkgutil.walk_packages(m.__path__, m.__name__ + "."):
+            candidates.append(name)
+    except Exception:
+        pass
+    seen = set()
+    for modname in candidates:
+        if modname in seen: 
+            continue
+        seen.add(modname)
+        try:
+            mod = importlib.import_module(modname)
+        except Exception:
+            continue
+        # Typer/Click-style entrypoint
+        if hasattr(mod, "app"):
+            app = getattr(mod, "app")
+            try:
+                # Typer app (callable)
+                app(prog_name="pymodbus-repl")
+                return True
+            except TypeError:
+                # Some apps expect no args to instantiate; try call without kwargs
+                app()
+                return True
+        # Plain main()
+        if hasattr(mod, "main") and callable(getattr(mod, "main")):
+            getattr(mod, "main")()
+            return True
+    return False
+
+def fallback_cli(argv):
+    """Minimal compatible CLI as a fallback: client read/write + demo server."""
+    parser = argparse.ArgumentParser(prog="pymodbus-repl (fallback)")
+    sub = parser.add_subparsers(dest="cmd", required=True)
+
+    p_srv = sub.add_parser("server", help="Run a demo Modbus TCP server")
+    p_srv.add_argument("--host", default="0.0.0.0")
+    p_srv.add_argument("--port", type=int, default=5020)
+
+    p_cli = sub.add_parser("client", help="Simple client operations")
+    p_cli.add_argument("--host", default="127.0.0.1")
+    p_cli.add_argument("--port", type=int, default=5020)
+    p_cli_sub = p_cli.add_subparsers(dest="op", required=True)
+
+    rd = p_cli_sub.add_parser("read-holding-registers", help="Read HR starting at ADDRESS COUNT")
+    rd.add_argument("address", type=int)
+    rd.add_argument("count", type=int)
+
+    wr = p_cli_sub.add_parser("write-register", help="Write single HR ADDRESS VALUE")
+    wr.add_argument("address", type=int)
+    wr.add_argument("value", type=int)
+
+    args = parser.parse_args(argv)
+
+    if args.cmd == "server":
+        from pymodbus.server import StartTcpServer
+        from pymodbus.datastore import ModbusSlaveContext, ModbusServerContext, ModbusSequentialDataBlock
+        store = ModbusSlaveContext(
+            di=ModbusSequentialDataBlock(0, [0]*100),
+            co=ModbusSequentialDataBlock(0, [0]*100),
+            hr=ModbusSequentialDataBlock(0, [0]*100),
+            ir=ModbusSequentialDataBlock(0, [0]*100),
+            zero_mode=True,
+        )
+        ctx = ModbusServerContext(slaves=store, single=True)
+        StartTcpServer(context=ctx, address=(args.host, args.port))
+        return 0
+
+    if args.cmd == "client":
+        from pymodbus.client import ModbusTcpClient
+        c = ModbusTcpClient(args.host, port=args.port)
+        ok = c.connect()
+        print("Connect:", ok)
+        if not ok:
+            return 2
+        try:
+            if args.op == "read-holding-registers":
+                r = c.read_holding_registers(args.address, args.count)
+                print("Result:", getattr(r, "registers", None))
+            elif args.op == "write-register":
+                r = c.write_register(args.address, args.value)
+                print("Write error?:", r.isError() if hasattr(r, "isError") else r)
+            return 0
+        finally:
+            c.close()
+
+if __name__ == "__main__":
+    # Try official package CLI first; if unavailable, use the fallback CLI.
+    if not run_pkg_app():
+        sys.exit(fallback_cli(sys.argv[1:]))

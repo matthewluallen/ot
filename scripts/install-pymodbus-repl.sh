@@ -2,14 +2,19 @@
 set -euxo pipefail
 cd /workspaces/ot
 
-# Create venv once
+# Ensure venv exists
 if [ ! -d ".venv" ]; then
   python3 -m venv .venv
 fi
 
-# Install packages into venv
+# Install/upgrade required packages
 ./.venv/bin/pip install --upgrade pip
-./.venv/bin/pip install "pymodbus" "pymodbus_repl"
 
-# Sanity check
-./.venv/bin/python -c "import pymodbus, pymodbus_repl; print('OK:', pymodbus.__version__)"
+# Install pymodbus with the REPL extra, pinned to a stable version
+./.venv/bin/pip install "pymodbus[repl]==3.5.4"
+
+# Quick sanity check
+./.venv/bin/python - <<'PY'
+import pymodbus
+print("pymodbus:", pymodbus.__version__)
+PY
