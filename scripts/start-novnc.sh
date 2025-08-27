@@ -1,25 +1,39 @@
 #!/usr/bin/env bash
-set -euxo pipefail
+set -euo pipefail
 
-# VNC password (change if you like)
+export DISPLAY=:1
 VNC_PASS="${VNC_PASS:-vscode}"
+VNC_GEOM="${VNC_GEOM:-1280x800}"
+VNC_DEPTH="${VNC_DEPTH:-24}"
+NOVNC_WEB="/usr/share/novnc"
+LOG="/tmp/novnc.start.log"
 
-# Prepare VNC auth
+echo "=== start-novnc $(date) ===" > "$LOG"
+
+command -v vncserver >>"$LOG" 2>&1 || { echo "vncserver not found" >>"$LOG"; exit 127; }
+command -v websockify >>"$LOG" 2>&1 || { echo "websockify not found" >>"$LOG"; exit 127; }
+
 mkdir -p "$HOME/.vnc"
-echo "$VNC_PASS" | vncpasswd -f > "$HOME/.vnc/passwd"
+printf "%s\n%s\n\n" "$VNC_PASS" "$VNC_PASS" | vncpasswd -f > "$HOME/.vnc/passwd"
 chmod 600 "$HOME/.vnc/passwd"
 
-# Start a minimal XFCE session when VNC starts
 cat > "$HOME/.vnc/xstartup" <<'EOS'
 #!/usr/bin/env bash
+unset SESSION_MANAGER
+unset DBUS_SESSION_BUS_ADDRESS
+export XKL_XMODMAP_DISABLE=1
 xrdb $HOME/.Xresources
-startxfce4 &
+startxfce4
 EOS
 chmod +x "$HOME/.vnc/xstartup"
 
-# Start VNC server on display :1 (TCP 5901)
-export DISPLAY=:1
-tightvncserver :1 -geometry 1280x800 -depth 24
+vncserver -kill :1 >>"$LOG" 2>&1 || true
+vncserver :1 -geometry "$VNC_GEOM" -depth "$VNC_DEPTH" -SecurityTypes VncAuth >>"$LOG" 2>&1
 
-# Start noVNC on TCP 6080 -> proxies to VNC :5901
-exec websockify --web=/usr/share/novnc/ 6080 localhost:5901
+for i in {1..30}; do
+  ss -lnt | grep -q ':5901' && { echo "VNC 5901 listening" >>"$LOG"; break; }
+  sleep 0.3
+done
+ss -lnt | grep -q ':5901' || { echo "ERROR: VNC (5901) failed" >>"$LOG"; tail -n 100 "$HOME/.vnc/"*":1.log" >>"$LOG" 2>&1 || true; exit 1; }
+
+exec websockify --web="$NOVNC_WEB" 6080 localhost:5901 >>"$LOG" 2>&1

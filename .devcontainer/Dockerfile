@@ -7,14 +7,16 @@ RUN apt-get update && apt-get install -y \
     curl ca-certificates git sudo unzip tmux supervisor \
     && rm -rf /var/lib/apt/lists/*
 
-# Desktop + VNC + noVNC + Wireshark (GUI capture)
+# --- existing base and build deps above ---
+
+# Desktop + VNC + noVNC + Wireshark for GUI capture
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
-    xfce4 xfce4-goodies \
-    tightvncserver novnc websockify \
-    xauth dbus-x11 \
+    tigervnc-standalone-server xfce4 xfce4-goodies x11-xserver-utils xauth dbus-x11 \
+    novnc websockify \
     wireshark wireshark-qt \
   && rm -rf /var/lib/apt/lists/* \
   && setcap 'CAP_NET_RAW+eip CAP_NET_ADMIN+eip' /usr/bin/dumpcap || true
+
 
 ARG GO_VERSION=1.22.5
 RUN curl -fsSL https://go.dev/dl/go${GO_VERSION}.linux-amd64.tar.gz -o /tmp/go.tgz \
