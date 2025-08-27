@@ -1,8 +1,10 @@
 {
   "name": "OT-sim + OpenPLC + pymodbus REPL (teaching)",
   "build": { "dockerfile": "Dockerfile" },
-  "updateContentCommand": "bash scripts/install-ot-sim.sh && bash scripts/install-openplc.sh && bash scripts/install-pymodbus-repl.sh",
+
+  "postCreateCommand": "bash scripts/install-ot-sim.sh && bash scripts/install-openplc.sh && bash scripts/install-pymodbus-repl.sh",
   "postStartCommand": "bash scripts/launch-procs.sh",
+
   "features": {
     "ghcr.io/devcontainers/features/git:1": {},
     "ghcr.io/devcontainers/features/common-utils:2": {}
